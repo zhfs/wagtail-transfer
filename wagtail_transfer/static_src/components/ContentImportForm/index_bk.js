@@ -1,15 +1,15 @@
 import * as React from 'react';
 import PageChooserWidget from '../PageChooserWidget';
 import ModelChooserWidget from '../ModelChooserWidget';
-import { PagesAPI, ModelsAPI } from '../../lib/api/admin';
+import {PagesAPI, ModelsAPI} from '../../lib/api/admin';
 
-function SourceSelectorWidget({ sources, selectedSource, onChange }) {
+function SourceSelectorWidget({sources, selectedSource, onChange}) {
   return (
     <select
       value={selectedSource ? selectedSource.value : ''}
       onChange={e => {
         const source = sources.filter(
-          ({ value }) => value == e.target.value
+          ({value}) => value == e.target.value
         )[0];
         onChange(source);
       }}
@@ -17,7 +17,7 @@ function SourceSelectorWidget({ sources, selectedSource, onChange }) {
       <option key="" value="">
         Select a site
       </option>
-      {sources.map(({ value, label }) => (
+      {sources.map(({value, label}) => (
         <option key={value} value={value}>
           {label}
         </option>
@@ -26,7 +26,7 @@ function SourceSelectorWidget({ sources, selectedSource, onChange }) {
   );
 }
 
-function SubmitButton({ onClick, disabled, numPages, importingModel }) {
+function SubmitButton({onClick, disabled, numPages, importingModel}) {
   let buttonText = 'Import';
   let defaultImportType = 'page';
   if (importingModel) {
@@ -54,12 +54,37 @@ function SubmitButton({ onClick, disabled, numPages, importingModel }) {
   );
 }
 
+function SubmitStructButton({onClick, disabled, numPages}) {
+  let buttonText = 'Import';
+  let defaultImportType = 'Struct';
+
+  if (numPages !== null && numPages !== 0) {
+    if (numPages == 1) {
+      buttonText = `Import 1 ${defaultImportType}`;
+    } else {
+      buttonText = `Import ${numPages} ${defaultImportType}s`;
+    }
+  } else {
+    buttonText = `Import ${defaultImportType}`;
+  }
+
+  return (
+    <button
+      className="button button-primary"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {buttonText}
+    </button>
+  );
+}
+
 export default function ImportContentForm({
-  localApiBaseUrl,
-  sources,
-  onSubmit,
-  localCheckUIDUrl
-}) {
+                                            localApiBaseUrl,
+                                            sources,
+                                            onSubmit,
+                                            localCheckUIDUrl
+                                          }) {
   // A `source` is set in Django/Wagtail settings. For example, a source could
   // be "production" or "staging". Note: These are NOT set in JavaScript
   const [source, setSource] = React.useState(
@@ -112,16 +137,17 @@ export default function ImportContentForm({
     }
   }, [sourceInstance, sourceInstanceObjectId]);
 
-  const onClickSubmit = () => {
+  const onClickSubmit = (buz_type) => {
     // The `onSubmit` function is found in static_src/index.js and is passed into
     // this class (ContentImportForm) as a JSX attribute.
-    console.log('0.9.4.6 client');
+    console.log('0.9.4.5 client', buz_type);
     onSubmit(
       source,
       sourcePage,
       destPage,
       sourceInstance,
-      sourceInstanceObjectId
+      sourceInstanceObjectId,
+      buz_type,
     );
   };
 
@@ -281,9 +307,9 @@ export default function ImportContentForm({
             ''
           )}
           <div>
-            0.9.4.6
+            0.9.4.5
             <SubmitButton
-              onClick={onClickSubmit}
+              onClick={onClickSubmit('content')}
               disabled={
                 !destPage &&
                 !alreadyExistsAtDestination &&
@@ -292,6 +318,17 @@ export default function ImportContentForm({
               }
               numPages={numPages}
               importingModel={sourceInstance || sourceInstanceObjectId}
+            />
+            <SubmitStructButton
+              onClick={onClickSubmit('struct')}
+              disabled={
+                (sourceInstance || sourceInstanceObjectId) ||
+                (!destPage &&
+                  !alreadyExistsAtDestination &&
+                  !sourceInstance &&
+                  !sourceInstanceObjectId)
+              }
+              numPages={numPages}
             />
           </div>
         </li>

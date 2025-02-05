@@ -15,6 +15,8 @@
     "@babel/preset-react": "^7.7.0",
     "autoprefixer": "^9.7.1",
     "babel-loader": "^8.0.6",
+    "browserslist": "^4.24.4",
+    "caniuse-lite": "^1.0.30001695",
     "css-loader": "^3.2.0",
     "cssnano": "^4.1.10",
     "mini-css-extract-plugin": "^0.8.0",

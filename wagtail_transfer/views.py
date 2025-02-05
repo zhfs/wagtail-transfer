@@ -258,7 +258,11 @@ def import_page(request):
     importer = ImportPlanner.for_page(source=request.POST['source_page_id'], destination=dest_page_id)
     importer.add_json(response.content)
     importer = import_missing_object_data(source, importer)
-
+    try:
+        buz_type = request.POST['buz_type']
+        print(buz_type)
+    except:
+        buz_type = 'content'
     if dest_page_id:
         return redirect('wagtailadmin_explore', dest_page_id)
     else:

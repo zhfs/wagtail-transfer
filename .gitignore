@@ -5,3 +5,4 @@ __pycache__
 /node_modules
 /site
 .DS_Store
+/*.egg-info
