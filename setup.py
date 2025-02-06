@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='wagtail-transfer-loft3di',
-    version='0.9.4.6',
+    version='0.9.4.9',
     description="Content transfer for Wagtail",
     author='Matthew Westcott',
     author_email='matthew.westcott@torchbox.com',

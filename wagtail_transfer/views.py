@@ -223,7 +223,7 @@ def choose_page(request):
     })
 
 
-def import_missing_object_data(source, importer: ImportPlanner):
+def import_missing_object_data(source, importer: ImportPlanner, buz_type='content'):
     base_url = settings.WAGTAILTRANSFER_SOURCES[source]['BASE_URL']
     while importer.missing_object_data:
         # convert missing_object_data from a set of (model_class, id) tuples
@@ -242,7 +242,7 @@ def import_missing_object_data(source, importer: ImportPlanner):
         response = requests.post(
             f"{base_url}api/objects/", params={'digest': digest}, data=request_data
         )
-        importer.add_json(response.content)
+        importer.add_json(response.content, buz_type)
     importer.run()
     return importer
 
@@ -255,14 +255,13 @@ def import_page(request):
     response = requests.get(f"{base_url}api/pages/{request.POST['source_page_id']}/", params={'digest': digest})
 
     dest_page_id = request.POST['dest_page_id'] or None
-    importer = ImportPlanner.for_page(source=request.POST['source_page_id'], destination=dest_page_id)
-    importer.add_json(response.content)
-    importer = import_missing_object_data(source, importer)
     try:
         buz_type = request.POST['buz_type']
-        print(buz_type)
     except:
         buz_type = 'content'
+    importer = ImportPlanner.for_page(source=request.POST['source_page_id'], destination=dest_page_id)
+    importer.add_json(response.content, buz_type)
+    importer = import_missing_object_data(source, importer, buz_type)
     if dest_page_id:
         return redirect('wagtailadmin_explore', dest_page_id)
     else:

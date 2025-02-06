@@ -14,7 +14,7 @@ from wagtail.models import Page
 from .field_adapters import adapter_registry
 from .locators import get_locator_for_model
 from .models import get_base_model, get_base_model_for_path, get_model_for_path
-
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ UPDATE_RELATED_MODELS = [
     model_label.lower()
     for model_label in getattr(settings, 'WAGTAILTRANSFER_UPDATE_RELATED_MODELS', default_update_related_models)
 ]
-
 
 # Models which should NOT be created in response to being encountered in object references
 default_no_follow_models = ['wagtailcore.page', 'contenttypes.contenttype']
@@ -47,11 +46,12 @@ class Objective:
     the latest version that exists on the source site.
     """
 
-    def __init__(self, model, source_id, context, must_update=False):
+    def __init__(self, model, source_id, context, buz_type='content', must_update=False):
         self.model = model
         self.source_id = source_id
         self.context = context
         self.must_update = must_update
+        self.buz_type = buz_type
 
         # Whether this object exists at the destination; None indicates 'not checked yet'
         self._exists_at_destination = None
@@ -92,8 +92,8 @@ class Objective:
 
     def __eq__(self, other):
         return (
-            isinstance(other, Objective)
-            and (self.model, self.source_id, self.must_update) == (other.model, other.source_id, other.must_update)
+                isinstance(other, Objective)
+                and (self.model, self.source_id, self.must_update) == (other.model, other.source_id, other.must_update)
         )
 
     def __hash__(self):
@@ -107,6 +107,7 @@ class ImportContext:
     (for example, once a page is created at the destination, we add its ID mapping so that we
     can handle references to it that appear in other imported pages).
     """
+
     def __init__(self):
         # A mapping of objects on the source site to their IDs on the destination site.
         # Keys are tuples of (model_class, source_id); values are destination IDs.
@@ -196,7 +197,7 @@ class ImportPlanner:
     def for_model(cls, model):
         return cls(model=model)
 
-    def add_json(self, json_data):
+    def add_json(self, json_data, buz_type='content'):
         """
         Add JSON data to the import plan. The data is a dict consisting of:
         'ids_for_import': a list of [model_classname, source_id] pairs for the set of objects
@@ -232,7 +233,7 @@ class ImportPlanner:
 
             if base_import or model_path not in NO_FOLLOW_MODELS:
                 objective = Objective(
-                    model, source_id, self.context,
+                    model, source_id, self.context, buz_type,
                     must_update=(base_import or model_path in UPDATE_RELATED_MODELS)
                 )
 
@@ -245,7 +246,6 @@ class ImportPlanner:
 
         # retry tasks that were previously postponed due to missing object data
         self._retry_tasks()
-
 
         # Process all unhandled objectives - which may trigger new objectives as dependencies of
         # the resulting operations - until no unhandled objectives remain
@@ -279,10 +279,9 @@ class ImportPlanner:
             no_update_objective.must_update = False
             self.objectives.discard(no_update_objective)
             self.unhandled_objectives.discard(no_update_objective)
-        
+
         self.objectives.add(objective)
         self.unhandled_objectives.add(objective)
-
 
     def _handle_objective(self, objective):
         if not objective.exists_at_destination:
@@ -291,13 +290,13 @@ class ImportPlanner:
             # it is in the set of objects explicitly selected for import, or it is a related object
             # that we have not been blocked from following by NO_FOLLOW_MODELS
             if (
-                objective.model._meta.label_lower in NO_FOLLOW_MODELS
-                and (objective.model, objective.source_id) not in self.base_import_ids
+                    objective.model._meta.label_lower in NO_FOLLOW_MODELS
+                    and (objective.model, objective.source_id) not in self.base_import_ids
             ):
                 # NO_FOLLOW_MODELS prevents us from creating this object
                 self.failed_creations.add((objective.model, objective.source_id))
             else:
-                task = ('create', objective.model, objective.source_id)
+                task = ('create', objective.model, objective.source_id, objective.buz_type)
                 self._handle_task(task)
 
         else:
@@ -306,7 +305,7 @@ class ImportPlanner:
             self.resolutions[(objective.model, objective.source_id)] = None
 
             if objective.must_update:
-                task = ('update', objective.model, objective.source_id)
+                task = ('update', objective.model, objective.source_id, objective.buz_type)
                 self._handle_task(task)
 
     def _handle_task(self, task):
@@ -333,7 +332,7 @@ class ImportPlanner:
         if task in self.task_resolutions:
             return
 
-        action, model, source_id = task
+        action, model, source_id, buz_type = task
         try:
             object_data = self.object_data_by_source[(model, source_id)]
         except KeyError:
@@ -367,6 +366,10 @@ class ImportPlanner:
                 # No operation to be performed for this task
                 operation = None
             elif action == 'create':
+                if issubclass(specific_model, Page) and buz_type == 'struct':
+                    placeholder = '[{"id": "%s", "type": "Text", "value": "<p data-block-key=\\"%s\\">Temporary Placeholder</p>"}]'
+                    this_placeholder = placeholder % (str(uuid.uuid4()), str(uuid.uuid4()))
+                    object_data['fields']['body'] = this_placeholder
                 if issubclass(specific_model, Page) and source_id == self.root_page_source_pk:
                     # this is the root page of the import; ignore the parent ID in the source
                     # record and import at the requested destination instead
@@ -397,13 +400,12 @@ class ImportPlanner:
                 child_uids = set()
 
                 for child_obj_pk in object_data['fields'][rel.name]:
-
                     # Add an objective for handling the child object. Regardless of whether
                     # this is a 'create' or 'update' task, we want the child objects to be at
                     # their most up-to-date versions, so set the objective to 'must update'
 
                     self._add_objective(
-                        Objective(related_base_model, child_obj_pk, self.context, must_update=True)
+                        Objective(related_base_model, child_obj_pk, self.context, buz_type, must_update=True)
                     )
 
         if operation is not None:
@@ -429,7 +431,7 @@ class ImportPlanner:
         if operation is not None:
             for model, source_id, is_hard_dep in operation.dependencies:
                 self._add_objective(
-                    Objective(model, source_id, self.context, must_update=(model._meta.label_lower in UPDATE_RELATED_MODELS))
+                    Objective(model, source_id, self.context, buz_type, must_update=(model._meta.label_lower in UPDATE_RELATED_MODELS))
                 )
 
             for instance in operation.deletions(self.context):
@@ -474,13 +476,12 @@ class ImportPlanner:
         with transaction.atomic():
             for operation in operation_order:
                 operation.run(self.context)
-            
+
             # pages must only have revisions saved after all child objects have been updated, imported, or deleted, otherwise
             # they will capture outdated versions of child objects in the revision
             for operation in operation_order:
                 if isinstance(operation.instance, Page):
                     operation.instance.save_revision()
-
 
     def _check_satisfiable(self, operation, statuses):
         # Check whether the given operation's dependencies are satisfiable. statuses is a dict of
@@ -602,6 +603,7 @@ class Operation:
     necessary to retrieve more data), finding a valid sequence to run them in, and running them all
     within a transaction.
     """
+
     def run(self, context):
         raise NotImplementedError
 
@@ -632,6 +634,7 @@ class SaveOperationMixin:
 
     Requires subclasses to define `self.model`, `self.instance` and `self.object_data`.
     """
+
     @cached_property
     def base_model(self):
         return get_base_model(self.model)
@@ -736,6 +739,7 @@ class CreateTreeModel(CreateModel):
 
     For example: Pages and Collections
     """
+
     def __init__(self, model, object_data, destination_parent_id=None):
         super().__init__(model, object_data)
         self.destination_parent_id = destination_parent_id
@@ -792,8 +796,8 @@ class UpdateImage(UpdateModel):
         instance_file_hash = self.instance.get_file_hash()
         for imported_file in context.imported_files_by_source_url.values():
             if (
-                imported_file.file.name == self.instance.file.name
-                and imported_file.hash == instance_file_hash
+                    imported_file.file.name == self.instance.file.name
+                    and imported_file.hash == instance_file_hash
             ):
                 # This will cause Wagtail to purge the renditions cache also.
                 self.instance.renditions.all().delete()

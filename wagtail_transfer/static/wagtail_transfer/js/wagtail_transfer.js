@@ -21684,6 +21684,15 @@ object-assign
   }
 
   function lr(e) {
+    var t = e.onClick, n = e.disabled, a = e.numPages, i = "Import";
+    return i = null !== a && 0 !== a ? 1 == a ? "Import 1 ".concat("Struct") : "Import ".concat(a, " ").concat("Struct", "s") : "Import ".concat("Struct"), r.createElement("button", {
+      className: "button button-primary",
+      onClick: t,
+      disabled: n
+    }, i)
+  }
+
+  function dr(e) {
     var t = e.localApiBaseUrl, n = e.sources, a = e.onSubmit, i = e.localCheckUIDUrl,
       o = or(r.useState(1 == n.length ? n[0] : null), 2), s = o[0], u = o[1], l = or(r.useState(null), 2), d = l[0],
       c = l[1], f = or(r.useState(null), 2), m = f[0], _ = f[1], h = or(r.useState(null), 2), p = h[0], y = h[1],
@@ -21773,10 +21782,14 @@ object-assign
       onChange: _,
       unchosenText: "Imported pages will be created as children of this page.",
       chosenText: "Imported pages will be created as children of this page."
-    }) : "", r.createElement("div", null, "0.9.4.6", r.createElement(ur, {
+    }) : "", r.createElement("div", null, r.createElement(ur, {
       onClick: function () {
-        console.log("0.9.4.6 client"), a(s, d, m, p, M)
+        a(s, d, m, p, M, "content")
       }, disabled: !(m || w || p || M), numPages: b, importingModel: p || M
+    }), r.createElement(lr, {
+      onClick: function () {
+        a(s, d, m, p, M, "struct")
+      }, disabled: p || M || !m && !w && !p && !M, numPages: b
     })))))
   }
 
@@ -21793,16 +21806,15 @@ object-assign
     })), document.querySelectorAll('[data-wagtail-component="content-import-form"]').forEach((function (e) {
       var t = e.dataset.localApiBaseUrl, n = e.dataset.localCheckUidUrl, r = JSON.parse(e.dataset.sources),
         i = e.dataset.action, s = e.dataset.csrfToken;
-      o.a.render(a.a.createElement(lr, {
-        localApiBaseUrl: t, sources: r, onSubmit: function (e, t, n, r, a) {
-          console.log("0.9.4.6 index source", e);
-          var o = r || a ? "model" : "page", u = document.createElement("form");
-          u.action = i, u.method = "post";
-          var l = function (e, t) {
+      o.a.render(a.a.createElement(dr, {
+        localApiBaseUrl: t, sources: r, onSubmit: function (e, t, n, r, a, o) {
+          var u = r || a ? "model" : "page", l = document.createElement("form");
+          l.action = i, l.method = "post";
+          var d = function (e, t) {
             var n = document.createElement("input");
-            n.type = "hidden", n.name = e, n.value = t, u.appendChild(n)
+            n.type = "hidden", n.name = e, n.value = t, l.appendChild(n)
           };
-          l("csrfmiddlewaretoken", s), l("type", o), l("source", e.value), "page" === o ? (l("source_page_id", t.id), l("dest_page_id", n ? n.id : null)) : (l("source_model", r.model_label), l("source_model_object_id", a)), document.body.appendChild(u), u.submit()
+          d("csrfmiddlewaretoken", s), d("type", u), d("source", e.value), "page" === u ? (d("source_page_id", t.id), d("dest_page_id", n ? n.id : null), d("buz_type", o)) : (d("source_model", r.model_label), d("source_model_object_id", a)), document.body.appendChild(l), l.submit()
         }, localCheckUIDUrl: n
       }), e)
     }))

@@ -34,8 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const action = element.dataset.action;
       const csrfToken = element.dataset.csrfToken;
 
-      const onSubmit = (source, sourcePage, destPage, model, modelObjectId) => {
-        console.log('0.9.4.6 index source', source);
+      const onSubmit = (source, sourcePage, destPage, model, modelObjectId, buz_type) => {
         const modelOrPage = model || modelObjectId ? 'model' : 'page';
         const formElement = document.createElement('form');
         formElement.action = action;
@@ -55,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modelOrPage === 'page') {
           addField('source_page_id', sourcePage.id);
           addField('dest_page_id', destPage ? destPage.id : null);
+          addField('buz_type', buz_type);
         } else {
           addField('source_model', model.model_label);
           addField('source_model_object_id', modelObjectId);
