@@ -474,6 +474,10 @@ class ImportPlanner:
 
         # run operations in order
         with transaction.atomic():
+            try:
+                operation_order.sort(key=lambda k: k.object_data['fields']['path'])
+            except:
+                pass
             for operation in operation_order:
                 operation.run(self.context)
 

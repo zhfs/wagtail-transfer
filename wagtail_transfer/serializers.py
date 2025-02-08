@@ -23,9 +23,9 @@ def _get_subclasses_recurse(model):
     rels = [
         rel for rel in related_objects
         if isinstance(rel.field, models.OneToOneField)
-        and issubclass(rel.field.model, model)
-        and model is not rel.field.model
-        and rel.parent_link
+           and issubclass(rel.field.model, model)
+           and model is not rel.field.model
+           and rel.parent_link
     ]
 
     subclasses = []
@@ -135,7 +135,7 @@ class ModelSerializer:
 
 
 class TreeModelSerializer(ModelSerializer):
-    ignored_fields = ['path', 'depth', 'numchild']
+    ignored_fields = ['depth', 'numchild']
 
     def serialize(self, instance):
         result = super().serialize(instance)

@@ -6,6 +6,8 @@ import ReactDOM from 'react-dom';
 import PageChooserWidget from './components/PageChooserWidget';
 import ContentImportForm from './components/ContentImportForm';
 
+console.log('Version 0.9.4.10');
+
 document.addEventListener('DOMContentLoaded', () => {
   document
     .querySelectorAll('[data-wagtail-component="page-chooser"]')
@@ -39,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const formElement = document.createElement('form');
         formElement.action = action;
         formElement.method = 'post';
-
         const addField = (name, value) => {
           const fieldElement = document.createElement('input');
           fieldElement.type = 'hidden';
